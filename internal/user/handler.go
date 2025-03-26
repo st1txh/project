@@ -1,64 +1,97 @@
 package user
 
 import (
-	"github.com/julienschmidt/httprouter"
+	"github.com/gin-gonic/gin"
+	"github.com/gofrs/uuid"
 	"net/http"
-	"rest-api-tutorial/internal/handlers"
 	"rest-api-tutorial/pkg/logging"
+	"time"
 )
 
-var _ handlers.Handler = &handler{}
-
-const (
-	usersURL = "/users"
-	userURL  = "/user/:uuid"
-)
-
-type handler struct {
-	logger *logging.Logger
+type Handler struct {
+	logger  *logging.Logger
+	storage *Storage
 }
 
-func NewHandler(logger *logging.Logger) handlers.Handler {
-	return &handler{
-		logger: logger,
+func NewHandler(storage *Storage, logger *logging.Logger) *Handler {
+	return &Handler{
+		logger:  logger,
+		storage: storage,
 	}
 }
 
-func (h *handler) Register(router *httprouter.Router) {
-	router.HandlerFunc(http.MethodGet, usersURL, h.GetList)
-	router.POST(usersURL, h.CreateUser)
-	router.GET(userURL, h.GetUserByUUID)
-	router.PUT(userURL, h.UpdateUser)
-	router.PATCH(userURL, h.PartiallyUpdateUser)
-	router.DELETE(userURL, h.DeleteUser)
+func (h *Handler) CreateUser(c *gin.Context) {
+	var newUser User
+	if err := c.ShouldBindJSON(&newUser); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	id, err := uuid.NewV4()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate ID"})
+		return
+	}
+	newUser.ID = id.String()
+	newUser.CreatedAt = time.Now()
+	newUser.UpdatedAt = newUser.CreatedAt
+
+	if err := h.storage.Create(c.Request.Context(), newUser); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+		return
+	}
+	c.JSON(http.StatusCreated, newUser)
 }
 
-func (h *handler) GetList(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(200)
-	w.Write([]byte("This is list of users"))
+func (h *Handler) GetList(c *gin.Context) {
+	users, err := h.storage.FindAll(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
+		return
+	}
+	c.JSON(http.StatusOK, users)
 }
 
-func (h *handler) CreateUser(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	w.WriteHeader(201)
-	w.Write([]byte("This is create user"))
+func (h *Handler) UpdateUser(c *gin.Context) {
+	param := c.Param("uuid")
+	var (
+		input User
+	)
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	input.ID = param
+	input.UpdatedAt = time.Now()
+
+	if err := h.storage.Update(c.Request.Context(), param, input); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user"})
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
-func (h *handler) GetUserByUUID(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	w.WriteHeader(200)
-	w.Write([]byte("This is user by uuid"))
+func (h *Handler) PartiallyUpdateUser(c *gin.Context) {
+	param := c.Param("uuid")
+	var input UserUpdate
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	if err := h.storage.PartialUpdate(c.Request.Context(), param, input); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user"})
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
-func (h *handler) UpdateUser(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	w.WriteHeader(204)
-	w.Write([]byte("This is fully update user"))
-}
-
-func (h *handler) PartiallyUpdateUser(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	w.WriteHeader(204)
-	w.Write([]byte("This is partially update user"))
-}
-
-func (h *handler) DeleteUser(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	w.WriteHeader(204)
-	w.Write([]byte("This is delete user"))
+func (h *Handler) DeleteUser(c *gin.Context) {
+	par := c.Param("uuid")
+	if err := h.storage.Delete(c.Request.Context(), par); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
+		return
+	}
+	c.Status(http.StatusNoContent)
 }

@@ -1,5 +1,11 @@
----
-
 is_debug: true
 listen:
-  type: sock
+  type: "tcp"
+  bindIP: "localhost"
+  port: "8080"
+postgresql:
+  host: "localhost"
+  port: 5432
+  username: postgres
+  password: 0000
+  database: mydb
