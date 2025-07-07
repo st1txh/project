@@ -19,27 +19,35 @@ type Client interface {
 	Begin(ctx context.Context) (pgx.Tx, error)
 }
 
-func NewClient(ctx context.Context, cfg config.ConfigUser, maxAttempts int) (pool *pgxpool.Pool, err error) {
-	dsn := fmt.Sprintf("postgresql://%s:%s@%s:%s/%s",
+func NewClient(ctx context.Context, cfg config.User, maxAttempts int) (*pgxpool.Pool, error) {
+	dsn := fmt.Sprintf("postgresql://%s:%s@%s:%s/%s?sslmode=disable",
 		cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.Database)
 
-	for i := maxAttempts; i == 0; i-- {
-		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-		defer cancel()
+	var pool *pgxpool.Pool
+	var err error
 
-		pool, err = pgxpool.Connect(ctx, dsn)
-		if err != nil {
-			break
+	for i := 0; i < maxAttempts; i++ {
+		attemptCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+
+		pool, err = pgxpool.Connect(attemptCtx, dsn)
+		cancel() // Важно освобождать ресурсы контекста
+
+		if err == nil {
+			// Проверяем работоспособность подключения
+			conn, err := pool.Acquire(ctx)
+			if err != nil {
+				log.Printf("Connection acquired but failed to ping: %v", err)
+				continue
+			}
+			conn.Release()
+
+			log.Println("Successfully connected to PostgreSQL!")
+			return pool, nil
 		}
 
-		log.Printf("Attempt %d: failed to connect to PostgreSQL: %v", i+1, err)
-		time.Sleep(5 * time.Second)
+		log.Printf("Attempt %d/%d failed: %v", i+1, maxAttempts, err)
+		time.Sleep(time.Second * time.Duration(i+1)) // Увеличиваем задержку с каждой попыткой
 	}
 
-	if err != nil {
-		return nil, fmt.Errorf("could not connect to PostgreSQL after %d attempts: %w", maxAttempts, err)
-	}
-
-	log.Println("Connected to PostgreSQL successfully!")
-	return pool, nil
+	return nil, fmt.Errorf("failed to connect after %d attempts: %w", maxAttempts, err)
 }

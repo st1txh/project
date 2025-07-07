@@ -14,14 +14,6 @@ type Storage struct {
 	logger *logging.Logger
 }
 
-/*type Repository interface {
-	Create(ctx context.Context, user User) (string, error)
-	FindAll(ctx context.Context) (u []User, err error)
-	FindOne(ctx context.Context, user User) (User, error)
-	Update(ctx context.Context, user User) error
-	Delete(ctx context.Context, id string) error
-}*/
-
 func NewUserStorage(pool *pgxpool.Pool, logger *logging.Logger) *Storage {
 	return &Storage{
 		client: pool,
@@ -31,8 +23,8 @@ func NewUserStorage(pool *pgxpool.Pool, logger *logging.Logger) *Storage {
 
 func (s *Storage) Create(ctx context.Context, user User) error {
 	q := `
-        INSERT INTO users (id, name, email, created_at, updated_at) 
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO users (id, name, email, date_of_birth, gender, created_at, updated_at) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
     `
 	_, err := s.client.Exec(
 		ctx,
@@ -40,15 +32,31 @@ func (s *Storage) Create(ctx context.Context, user User) error {
 		user.ID,
 		user.Name,
 		user.Email,
+		user.DateOfBirth,
+		user.Gender,
 		user.CreatedAt,
 		user.UpdatedAt,
 	)
+
+	if len(user.FilmUUID) > 0 {
+		qFilm := `
+            INSERT INTO user_film (user_id, film_id)
+            VALUES ($1, $2)
+        `
+		for _, filmID := range user.FilmUUID {
+			_, err = s.client.Exec(ctx, qFilm, user.ID, filmID)
+			if err != nil {
+				return fmt.Errorf("failed to insert user-film relation: %w", err)
+			}
+		}
+	}
+
 	return err
 }
 
 func (s *Storage) FindOne(ctx context.Context, id string) (*User, error) {
 	q := `
-        SELECT id, name, email, created_at, updated_at 
+        SELECT id, name, email, date_of_birth, gender, created_at, updated_at 
         FROM users 
         WHERE id = $1
     `
@@ -58,6 +66,8 @@ func (s *Storage) FindOne(ctx context.Context, id string) (*User, error) {
 		&user.ID,
 		&user.Name,
 		&user.Email,
+		&user.DateOfBirth,
+		&user.Gender,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -74,16 +84,18 @@ func (s *Storage) FindOne(ctx context.Context, id string) (*User, error) {
 	return &user, nil
 }
 
-func (s *Storage) PartialUpdate(ctx context.Context, id string, input UserUpdate) error {
+func (s *Storage) PartialUpdate(ctx context.Context, id string, input Update) error {
 	q := `
         UPDATE users 
         SET 
             name = COALESCE($2, name),
             email = COALESCE($3, email),
+            date_of_birth = coalesce($4, date_of_birth),
+            gender = coalesce($5, gender),
             updated_at = NOW()
         WHERE id = $1
     `
-	_, err := s.client.Exec(ctx, q, id, input.Name, input.Email)
+	_, err := s.client.Exec(ctx, q, id, input.Name, input.Email, input.DateOfBirth, input.Gender)
 	return err
 }
 
@@ -93,11 +105,13 @@ func (s *Storage) Update(ctx context.Context, id string, input User) error {
         SET 
             name = COALESCE($2, name),
             email = COALESCE($3, email),
+            date_of_birth = coalesce($4, date_of_birth),
+            gender = coalesce($5, gender),
             updated_at = NOW()
         WHERE id = $1
     `
 
-	_, err := s.client.Exec(ctx, q, id, input.Name, input.Email)
+	_, err := s.client.Exec(ctx, q, id, input.Name, input.Email, input.DateOfBirth, input.Gender)
 
 	if err != nil {
 		s.logger.Errorf("Failed to update user: %v", err)
@@ -118,7 +132,7 @@ func (s *Storage) Delete(ctx context.Context, id string) error {
 }
 
 func (s *Storage) FindAll(ctx context.Context) ([]User, error) {
-	q := `SELECT id, name, email, created_at, updated_at FROM users`
+	q := `SELECT id, name, email, date_of_birth, gender, created_at, updated_at FROM users`
 	rows, err := s.client.Query(ctx, q)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get users: %w", err)
@@ -132,6 +146,8 @@ func (s *Storage) FindAll(ctx context.Context) ([]User, error) {
 			&user.ID,
 			&user.Name,
 			&user.Email,
+			&user.DateOfBirth,
+			&user.Gender,
 			&user.CreatedAt,
 			&user.UpdatedAt,
 		); err != nil {

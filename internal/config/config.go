@@ -23,7 +23,7 @@ type Config struct {
 	} `yaml:"postgresql"`
 }
 
-type ConfigUser struct {
+type User struct {
 	Host     string
 	Port     string
 	Username string

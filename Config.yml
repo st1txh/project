@@ -1,11 +1,15 @@
 is_debug: true
 listen:
   type: "tcp"
-  bindIP: "localhost"
+  bindIP: "0.0.0.0"  # Важно для доступа извне контейнера
   port: "8080"
 postgresql:
-  host: "localhost"
-  port: 5432
-  username: postgres
-  password: 0000
-  database: mydb
+  host: "db"
+  port: "5432"
+  username: "st1txh"  # Должно совпадать
+  password: "St1txh_0000"  # Должно совпадать
+  database: "st1txh_db"  # Должно совпадать
+  pool:
+    max_conns: 10
+    min_conns: 2
+    max_conn_lifetime: "30m"

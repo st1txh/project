@@ -1,0 +1,538 @@
+basePath: /api
+definitions:
+  internal_films.Film:
+    description: Модель фильма с рейтингом и датой выпуска
+    properties:
+      created_at:
+        description: '@format date'
+        type: string
+      description:
+        type: string
+      film_id:
+        description: '@format uuid'
+        type: string
+      rating:
+        description: |-
+          @minimum 0
+          @maximum 10
+        type: number
+      release_date:
+        description: '@format date'
+        type: string
+      title:
+        description: |-
+          @minLength 1
+          @maxLength 255
+        type: string
+      updated_at:
+        description: '@format date'
+        type: string
+    required:
+    - title
+    type: object
+  internal_films.UpdateFilm:
+    description: Модель фильма с необходимым базисом для обновления
+    properties:
+      description:
+        type: string
+      rating:
+        type: number
+      release_date:
+        type: string
+      title:
+        type: string
+    type: object
+  internal_user.Update:
+    description: Модель пользователя с данными, необходимыми для обновления
+    properties:
+      date_of_birth:
+        description: |-
+          Информация о дате рождения пользователя
+          @Example "2000.01.01"
+          @Format date
+        type: string
+      email:
+        description: |-
+          Электронная почта пользователя
+          @Example "testemail@example.com"
+          @Format email
+        type: string
+      film_id:
+        description: |-
+          Уникальный идентификатор фильма, с которым связан пользователь
+          @Example "1111a111-2b2b-3333-444d-55555555eee5"
+          @DFormat uuid
+        items:
+          type: string
+        type: array
+      gender:
+        description: |-
+          Пол пользователя
+          @Enum "М" "Ж"
+          @Format string
+          @MaxLength 1
+        type: string
+      name:
+        description: |-
+          Полное ФИО пользователя
+          @Example "Иванов Иван Иванович"
+          @MinLength 2
+          @MaxLength 100
+        type: string
+    type: object
+  internal_user.User:
+    description: Модель пользователя со всеми его данными
+    properties:
+      created_at:
+        description: '@format date'
+        type: string
+      date_of_birth:
+        description: '@format date'
+        type: string
+      email:
+        description: |-
+          @minLength 1
+          @maxLength 255
+        type: string
+      film_id:
+        description: '@format uuid'
+        items:
+          type: string
+        type: array
+      gender:
+        type: string
+      id:
+        description: '@format uuid'
+        type: string
+      name:
+        description: |-
+          @minLength 1
+          @maxLength 255
+        type: string
+      updated_at:
+        description: '@format date'
+        type: string
+    required:
+    - date_of_birth
+    - email
+    - gender
+    - name
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: st1txh.devops@ussr.com
+    name: API Support
+  description: API для управления фильмами и пользователями с аутентификацией
+  license:
+    name: Omsk
+    url: https://opensource.org/licenses/MIT
+  title: Movie REST API
+  version: "1.0"
+paths:
+  /films:
+    get:
+      description: Retrieve a list of all films with optional sorting
+      parameters:
+      - description: Field to sort by (title, rating, release_date)
+        in: query
+        name: sort_by
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of films
+          schema:
+            items:
+              $ref: '#/definitions/internal_films.Film'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get all films
+      tags:
+      - films
+    post:
+      consumes:
+      - application/json
+      description: Create a new film with the provided details
+      parameters:
+      - description: Film data to create
+        in: body
+        name: film
+        required: true
+        schema:
+          $ref: '#/definitions/internal_films.Film'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Successfully created film
+          schema:
+            $ref: '#/definitions/internal_films.Film'
+        "400":
+          description: Invalid request body
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new film
+      tags:
+      - films
+  /films/{uuid}:
+    delete:
+      description: Remove a film by its UUID
+      parameters:
+      - description: Film ID (UUID)
+        in: path
+        name: uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Film deleted successfully
+        "404":
+          description: Film not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a film
+      tags:
+      - films
+    patch:
+      consumes:
+      - application/json
+      description: Update specific fields of a film
+      parameters:
+      - description: Film ID (UUID)
+        in: path
+        name: uuid
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: updates
+        required: true
+        schema:
+          $ref: '#/definitions/internal_films.UpdateFilm'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Film updated successfully
+        "400":
+          description: Invalid request body
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Film not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Partially update film
+      tags:
+      - films
+  /films/sorted:
+    get:
+      description: Retrieve a list of films sorted by specified criteria
+      parameters:
+      - description: Field to sort by (title, rating, release_date)
+        in: query
+        name: sort_by
+        type: string
+      - default: asc
+        description: Sort order (asc, desc)
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sorted list of films
+          schema:
+            items:
+              $ref: '#/definitions/internal_films.Film'
+            type: array
+        "400":
+          description: Invalid sort parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get sorted films list
+      tags:
+      - films
+  /films/user/{uuid}:
+    get:
+      description: Retrieve all films associated with specific user
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: No films found for user
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get films by user ID
+      tags:
+      - films
+  /users:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a list of all users
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of users
+          schema:
+            items:
+              $ref: '#/definitions/internal_user.User'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get all users
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      description: Create a new user with the provided details
+      parameters:
+      - description: User data to create
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/internal_user.User'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Successfully created user
+          schema:
+            $ref: '#/definitions/internal_user.User'
+        "400":
+          description: Invalid request body
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new user
+      tags:
+      - users
+  /users/{uuid}:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a user by their UUID
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: User deleted successfully
+        "404":
+          description: User not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a user
+      tags:
+      - users
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a single user by their UUID
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Requested user
+          schema:
+            $ref: '#/definitions/internal_user.User'
+        "404":
+          description: User not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get a user by ID
+      tags:
+      - users
+    patch:
+      consumes:
+      - application/json
+      description: Update specific fields of a user
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: uuid
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: updates
+        required: true
+        schema:
+          $ref: '#/definitions/internal_user.Update'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: User updated successfully
+        "400":
+          description: Invalid request body
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: User not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Partially update a user
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: Replace all user data with the provided values
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: uuid
+        required: true
+        type: string
+      - description: Updated user data
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/internal_user.User'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: User updated successfully
+        "400":
+          description: Invalid request body
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: User not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Fully update a user
+      tags:
+      - users
+schemes:
+- http
+- https
+securityDefinitions:
+  BearerAuth:
+    in: query
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
