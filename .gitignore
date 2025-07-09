@@ -8,6 +8,6 @@ data/
 volumes/
 
 # Логи и кэш
-*.log
+logs/all.log
 *.cache
-*.tmplogs/all.log
+*.tmp
