@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: st1txh  # Изменяем пользователя
+      POSTGRES_PASSWORD: St1txh_0000  # Сложный пароль
+      POSTGRES_DB: st1txh_db  # Изменяем имя БД
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+    ports:
+      - "5433:5432"  # Внешний порт 5433, внутренний 5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./project/Config.yml:/app/Config.ymld
+      - ./project/migrations:/docker-entrypoint-initdb.d
+      - ./docs:/app/docs
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U st1txh -d st1txh_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: ./project
+      dockerfile: Dockerfile
+    environment:
+      DB_HOST: db
+      DB_USER: st1txh
+      DB_PASSWORD: St1txh_0000
+      DB_NAME: st1txh_db
+      DB_PORT: "5432"
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
