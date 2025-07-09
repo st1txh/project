@@ -1,15 +1,15 @@
-is_debug: true
+is_debug: ${IS_DEBUG:-false}
 listen:
-  type: "tcp"
-  bindIP: "0.0.0.0"  # Важно для доступа извне контейнера
-  port: "8080"
+  type: ${TYPE:-tcp}
+  bindIP: ${BINDIP:-0.0.0.0}
+  port: ${PORT:-8080}
 postgresql:
-  host: "db"
-  port: "5432"
-  username: "st1txh"  # Должно совпадать
-  password: "St1txh_0000"  # Должно совпадать
-  database: "st1txh_db"  # Должно совпадать
+  host: ${DB_HOST:-localhost}
+  port: ${DB_PORT:-5432}
+  username: ${DB_USER:-postgres}
+  password: ${DB_PASSWORD:-}
+  database: ${DB_NAME:-db}
   pool:
-    max_conns: 10
-    min_conns: 2
-    max_conn_lifetime: "30m"
+    max_cons: ${MAX_CONS:-10}
+    min_cons: ${MIN_CONS:-2}
+    max_con_lifetime: ${MAX_CONS_LIFETIME:-5m}

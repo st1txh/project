@@ -1,36 +1,37 @@
 services:
   db:
     image: postgres:15-alpine
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: st1txh  # Изменяем пользователя
-      POSTGRES_PASSWORD: St1txh_0000  # Сложный пароль
-      POSTGRES_DB: st1txh_db  # Изменяем имя БД
-      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
-      - "5433:5432"  # Внешний порт 5433, внутренний 5432
+      - "${DB_PORT}:${DB_PORT}"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./project/Config.yml:/app/Config.ymld
-      - ./project/migrations:/docker-entrypoint-initdb.d
+      - ./migrations/init.sql:/docker-entrypoint-initdb.d/init.sql
       - ./docs:/app/docs
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U st1txh -d st1txh_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 10
 
   app:
     build:
-      context: ./project
+      context: .
       dockerfile: Dockerfile
+    env_file: .env
     environment:
-      DB_HOST: db
-      DB_USER: st1txh
-      DB_PASSWORD: St1txh_0000
-      DB_NAME: st1txh_db
-      DB_PORT: "5432"
+      DB_HOST: ${DB_HOST}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_PORT: ${DB_PORT}
     ports:
-      - "8080:8080"
+      - "${PORT}:${PORT}"
     depends_on:
       db:
         condition: service_healthy

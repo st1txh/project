@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"log"
 	"rest-api-tutorial/internal/config"
 	"time"
-
-	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 type Client interface {
@@ -30,10 +29,9 @@ func NewClient(ctx context.Context, cfg config.User, maxAttempts int) (*pgxpool.
 		attemptCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 
 		pool, err = pgxpool.Connect(attemptCtx, dsn)
-		cancel() // Важно освобождать ресурсы контекста
+		cancel()
 
 		if err == nil {
-			// Проверяем работоспособность подключения
 			conn, err := pool.Acquire(ctx)
 			if err != nil {
 				log.Printf("Connection acquired but failed to ping: %v", err)
@@ -46,7 +44,7 @@ func NewClient(ctx context.Context, cfg config.User, maxAttempts int) (*pgxpool.
 		}
 
 		log.Printf("Attempt %d/%d failed: %v", i+1, maxAttempts, err)
-		time.Sleep(time.Second * time.Duration(i+1)) // Увеличиваем задержку с каждой попыткой
+		time.Sleep(time.Second * time.Duration(i+1))
 	}
 
 	return nil, fmt.Errorf("failed to connect after %d attempts: %w", maxAttempts, err)

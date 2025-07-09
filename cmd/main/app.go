@@ -40,7 +40,7 @@ import (
 
 func main() {
 	logger := logging.GetLogger()
-	cfg := config.GetConfig()
+	cfg := config.LoadConfigEnv()
 
 	// Создаем контекст с таймаутом для инициализации приложения
 	initCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

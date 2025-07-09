@@ -1,4 +1,5 @@
-# Игнорируем локальные файлы конфигурации
+# Игнорируем локальные файлы конфигурации и миграции
+migrations/
 .env
 docker-compose.override.yml
 
@@ -9,4 +10,4 @@ volumes/
 # Логи и кэш
 *.log
 *.cache
-*.tmp
+*.tmplogs/all.log

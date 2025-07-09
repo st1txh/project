@@ -24,16 +24,15 @@ FROM alpine:latest
 
 WORKDIR /app
 
-# Копируем бинарник
+# Копируем
 COPY --from=builder /app/bin/restapi .
-# Копируем конфиги
-COPY Config.yml .
-
+COPY config/Config.yml .
 COPY docs ./docs
+COPY --from=builder /app/.env .
 
 # Создаем папку для логов
 RUN mkdir -p /app/logs
 
-EXPOSE 8080
+EXPOSE "${PORT}"
 
 CMD ["./restapi"]
